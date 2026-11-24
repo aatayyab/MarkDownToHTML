@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MarkDown to WordPress HTML Converter</title>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; margin: 0; background: #f6f8fa; color: #1f2328; }
+  header { background: #24292f; color: #fff; padding: 20px; text-align: center; }
+  header h1 { margin: 0 0 6px; font-size: 1.6em; }
+  header p { margin: 0; opacity: .8; font-size: .95em; }
+  main { max-width: 960px; margin: 0 auto; padding: 20px; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .tab { flex: 1; min-width: 220px; padding: 12px; border: 1px solid #d1d9e0; background: #fff; border-radius: 6px; cursor: pointer; font-size: 15px; }
+  .tab.active { background: #0969da; color: #fff; border-color: #0969da; }
+  .card { background: #fff; border: 1px solid #d1d9e0; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+  .card h2 { margin: 0 0 8px; font-size: 1.1em; }
+  .hint { color: #59636e; font-size: .9em; margin: 0 0 10px; }
+  textarea { width: 100%; min-height: 220px; font-family: ui-monospace, Consolas, monospace; font-size: 13px; padding: 10px; border: 1px solid #d1d9e0; border-radius: 6px; resize: vertical; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+  .opt { font-size: 14px; display: flex; gap: 6px; align-items: center; }
+  button { padding: 9px 16px; border: 1px solid #d1d9e0; background: #f6f8fa; border-radius: 6px; cursor: pointer; font-size: 14px; }
+  button:hover { background: #eaeef2; }
+  button.primary { background: #1f883d; color: #fff; border-color: #1f883d; }
+  button.primary:hover { background: #1a7f37; }
+  .preview { border: 1px solid #d1d9e0; border-radius: 6px; padding: 16px; background: #fff; overflow: auto; }
+  .toast { color: #1a7f37; font-size: 14px; }
+  .checks { border: 1px solid #d1d9e0; border-radius: 6px; padding: 10px 14px; background: #f6f8fa; font-size: 14px; }
+  .checks ul { margin: 0; padding-left: 1.2em; }
+  .checks li { margin: 4px 0; }
+  .checks .ok { color: #1a7f37; }
+  .checks .warn { color: #9a6700; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>MarkDown to WordPress HTML Converter</h1>
+  <p>Create clean, copy-ready HTML for a WordPress.com Custom HTML block</p>
+</header>
+
+<main>
+  <div class="tabs">
+    <button class="tab active" data-mode="md">1. Markdown → WordPress HTML</button>
+    <button class="tab" data-mode="wp">2. Messy WordPress code → Clean HTML</button>
+  </div>
+
+  <div class="card">
+    <h2 id="inputTitle">Paste your Markdown</h2>
+    <p class="hint" id="inputHint">Paste the contents of your .md file below.</p>
+    <textarea id="input" placeholder="# My Title
+
+Paste your markdown here..."></textarea>
+    <div class="row">
+      <label class="opt"><input type="checkbox" id="stripTitle" checked> Remove the first # title (WordPress already shows the post title)</label>
+    </div>
+    <div class="row">
+      <label class="opt"><input type="checkbox" id="applyStyle" checked> Add GitHub-style look (inline, works on free WordPress.com)</label>
+    </div>
+    <div class="row">
+      <button class="primary" id="convertBtn">Convert</button>
+      <button id="clearBtn">Clear</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Checks</h2>
+    <div class="checks" id="checks"><span class="hint" style="margin:0">Convert something to see the checks here.</span></div>
+  </div>
+
+  <div class="card">
+    <h2>Clean HTML output</h2>
+    <p class="hint">Click <b>Copy HTML</b>, then paste it into a WordPress.com <b>Custom HTML</b> block.</p>
+    <textarea id="output" readonly></textarea>
+    <div class="row">
+      <button class="primary" id="copyBtn">Copy HTML</button>
+      <button id="downloadBtn">Download .html</button>
+      <span class="toast" id="toast"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Preview</h2>
+    <div class="preview" id="preview"></div>
+  </div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+let mode = "md";
+let notes = [];   // list of { type: "ok" | "warn", msg }
+
+// GitHub-style look, applied as inline styles on each element
+const STYLES = {
+  h1: "font-size:2em;font-weight:600;line-height:1.25;margin:24px 0 16px;padding-bottom:.3em;border-bottom:1px solid #d1d9e0;",
+  h2: "font-size:1.5em;font-weight:600;line-height:1.25;margin:24px 0 16px;padding-bottom:.3em;border-bottom:1px solid #d1d9e0;",
+  h3: "font-size:1.25em;font-weight:600;line-height:1.25;margin:24px 0 16px;",
+  h4: "font-size:1em;font-weight:600;margin:24px 0 16px;",
+  p:  "margin:0 0 16px;line-height:1.5;",
+  ul: "padding-left:2em;margin:0 0 16px;",
+  ol: "padding-left:2em;margin:0 0 16px;",
+  li: "margin-top:.25em;",
+  a:  "color:#0969da;text-decoration:none;",
+  pre: "background:#f6f8fa;padding:16px;border-radius:6px;overflow:auto;line-height:1.45;font-size:85%;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;",
+  code: "font-family:ui-monospace,SFMono-Regular,Consolas,monospace;background:rgba(175,184,193,.2);padding:.2em .4em;border-radius:6px;font-size:85%;",
+  table: "border-collapse:collapse;margin:0 0 16px;",
+  th: "border:1px solid #d1d9e0;padding:6px 13px;font-weight:600;background:#f6f8fa;",
+  td: "border:1px solid #d1d9e0;padding:6px 13px;",
+  hr: "border:0;border-top:1px solid #d1d9e0;height:0;margin:24px 0;",
+  img: "max-width:100%;height:auto;"
+};
+const CODE_IN_PRE = "background:none;padding:0;font-size:100%;";
+
+// Simple LaTeX symbols that sometimes appear in notes
+const LATEX = { approx: "≈", times: "×", le: "≤", ge: "≥", rightarrow: "→", cdot: "·" };
+
+// ---------- Tabs ----------
+document.querySelectorAll(".tab").forEach(btn => btn.addEventListener("click", () => {
+  mode = btn.dataset.mode;
+  document.querySelectorAll(".tab").forEach(b => b.classList.toggle("active", b === btn));
+  const md = mode === "md";
+  $("inputTitle").textContent = md ? "Paste your Markdown" : "Paste your messy WordPress.com code";
+  $("inputHint").textContent = md
+    ? "Paste the contents of your .md file below."
+    : "Paste HTML from the WordPress.com code editor, or from View Source of your published post. The cleaner keeps only the post content.";
+  $("input").placeholder = md ? "# My Title\n\nPaste your markdown here..." : "<!-- wp:paragraph --><p style=\"...\"><span>Paste messy code here</span></p>";
+  $("stripTitle").disabled = !md;
+  $("output").value = "";
+  $("preview").innerHTML = "";
+  renderChecks([]);
+}));
+
+// ---------- Buttons ----------
+$("convertBtn").addEventListener("click", () => {
+  const raw = $("input").value;
+  if (!raw.trim()) { showToast("Paste something first."); return; }
+  try {
+    notes = [];
+    const style = $("applyStyle").checked;
+    const result = mode === "md"
+      ? markdownToHtml(raw, $("stripTitle").checked, style)
+      : cleanWordPressHtml(raw, style);
+    $("output").value = result;
+    $("preview").innerHTML = DOMPurify.sanitize(result);
+    renderChecks(notes);
+    showToast("Converted!");
+  } catch (err) {
+    showToast("Something went wrong: " + err.message);
+  }
+});
+
+$("clearBtn").addEventListener("click", () => {
+  $("input").value = "";
+  $("output").value = "";
+  $("preview").innerHTML = "";
+  renderChecks([]);
+});
+
+$("copyBtn").addEventListener("click", async () => {
+  const text = $("output").value;
+  if (!text) return showToast("Convert something first.");
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    $("output").select();
+    document.execCommand("copy");
+  }
+  showToast("Copied! Paste it into a Custom HTML block.");
+});
+
+$("downloadBtn").addEventListener("click", () => {
+  const text = $("output").value;
+  if (!text) return showToast("Convert something first.");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([text], { type: "text/html" }));
+  a.download = "wordpress_post.html";
+  a.click();
+});
+
+function showToast(msg) {
+  $("toast").textContent = msg;
+  clearTimeout(showToast.timer);
+  showToast.timer = setTimeout(() => $("toast").textContent = "", 3000);
+}
+
+function renderChecks(list) {
+  const box = $("checks");
+  box.innerHTML = "";
+  if (!list.length) {
+    box.innerHTML = '<span class="hint" style="margin:0">Convert something to see the checks here.</span>';
+    return;
+  }
+  const ul = document.createElement("ul");
+  list.forEach(n => {
+    const li = document.createElement("li");
+    li.className = n.type;
+    li.textContent = (n.type === "ok" ? "✔ " : "⚠ ") + n.msg;
+    ul.appendChild(li);
+  });
+  box.appendChild(ul);
+}
+
+// ---------- Mode 1: Markdown → HTML ----------
+function markdownToHtml(md, stripTitle, style) {
+  let text = md.replace(/\r\n/g, "\n");
+
+  if (stripTitle) text = text.replace(/^\s*#\s+.*\n?/, "");   // remove first "# Title" line
+
+  // Warn if a code fence (```) is never closed
+  const fenceCount = (text.match(/^\s*```/gm) || []).length;
+  if (fenceCount % 2 === 1) {
+    notes.push({ type: "warn", msg: "A code block (```) is not closed. Add a closing ``` line in your Markdown." });
+  }
+
+  // 1. Cut out fenced code blocks and replace them with placeholders.
+  //    Odd indexes from split() are the code blocks themselves.
+  const codeBlocks = [];
+  const parts = text.split(/(```[\s\S]*?```)/);
+  text = parts.map((part, i) => {
+    if (i % 2 === 0) return part;
+    codeBlocks.push(part);
+    return `\n\nCODEBLOCK${codeBlocks.length - 1}END\n\n`;
+  }).join("");
+
+  // 2. Fix bold markers inside code spans, e.g. `Deployment Tools**`
+  let boldFixes = 0;
+  text = text.replace(/`([^`\n]+)`/g, (m, inner) => {
+    if (inner.length > 2 && /\*\*$/.test(inner)) {
+      boldFixes++;
+      return "`" + inner.slice(0, -2) + "`**";
+    }
+    return m;
+  });
+  if (boldFixes) notes.push({ type: "ok", msg: `Fixed ${boldFixes} bold marker(s) that were inside code spans.` });
+
+  // 3. LaTeX symbols → Unicode (code blocks are already protected)
+  let latexFixes = 0;
+  text = text.replace(/\$\\([a-zA-Z]+)\$/g, (m, k) => {
+    if (LATEX[k]) { latexFixes++; return LATEX[k]; }
+    return m;
+  });
+  if (latexFixes) notes.push({ type: "ok", msg: `Converted ${latexFixes} LaTeX symbol(s) to plain characters.` });
+
+  // 4. Render the Markdown (without the code blocks)
+  let rendered = DOMPurify.sanitize(marked.parse(text, { gfm: true }));
+
+  // 5. Put each code block back, rendered exactly as written
+  const langs = new Set();
+  codeBlocks.forEach((block, i) => {
+    const m = block.match(/^```([^\n]*)\n([\s\S]*?)\n?```$/);
+    const lang = m ? m[1].trim() : "";
+    const body = m ? m[2] : block.slice(3, -3);
+    if (lang) langs.add(lang);
+    const pre = DOMPurify.sanitize(marked.parse("```" + lang + "\n" + body + "\n```"));
+    const re = new RegExp(`<p>\\s*CODEBLOCK${i}END\\s*</p>`);
+    rendered = rendered.replace(re, () => pre);   // function form keeps $ signs literal
+  });
+  if (codeBlocks.length) {
+    const list = langs.size ? ` (${[...langs].join(", ")})` : "";
+    notes.push({ type: "ok", msg: `Kept ${codeBlocks.length} code block(s) exactly as written${list}.` });
+  }
+
+  const root = toBody(rendered);
+  fixLeftoverBold(root);
+  checkLeftovers(root);
+  return finish(root, style);
+}
+
+// ---------- Mode 2: Messy WordPress code → clean HTML ----------
+function cleanWordPressHtml(raw, style) {
+  const doc = new DOMParser().parseFromString(raw, "text/html");
+
+  // If a whole page was pasted, focus on the post content only
+  const root = doc.querySelector(".entry-content, .post-content, .wp-block-post-content, article") || doc.body;
+
+  // 1. Remove HTML comments (WordPress block markers like <!-- wp:paragraph -->)
+  const walker = doc.createTreeWalker(root, NodeFilter.SHOW_COMMENT);
+  const comments = [];
+  while (walker.nextNode()) comments.push(walker.currentNode);
+  comments.forEach(c => c.remove());
+  if (comments.length) notes.push({ type: "ok", msg: `Removed ${comments.length} WordPress block comment(s).` });
+
+  // 2. Remove things that don't belong in a post
+  root.querySelectorAll("script,style,link,meta,title,iframe,noscript,object,embed,form,button,input,select,textarea,svg,canvas,nav,aside,header,footer")
+      .forEach(el => el.remove());
+
+  // 3. Unwrap junk wrappers, rename old tags, strip messy attributes
+  const UNWRAP = ["span", "font", "div", "section", "article", "main", "center", "label", "o:p"];
+  const RENAME = { b: "strong", i: "em", strike: "s", del: "s" };
+  const KEEP = {
+    a: ["href", "title", "target", "rel"],
+    img: ["src", "alt", "title", "width", "height"],
+    td: ["colspan", "rowspan"],
+    th: ["colspan", "rowspan"],
+    ol: ["start"]
+  };
+
+  Array.from(root.querySelectorAll("*")).reverse().forEach(el => {
+    const tag = el.tagName.toLowerCase();
+    if (UNWRAP.includes(tag)) { el.replaceWith(...el.childNodes); return; }
+    if (RENAME[tag]) {
+      const n = doc.createElement(RENAME[tag]);
+      n.append(...el.childNodes);
+      el.replaceWith(n);
+      return;
+    }
+    const keep = KEEP[tag] || [];
+    [...el.attributes].forEach(a => { if (!keep.includes(a.name)) el.removeAttribute(a.name); });
+    if (tag === "a" && /^\s*javascript:/i.test(el.getAttribute("href") || "")) el.removeAttribute("href");
+  });
+
+  // 4. Fix odd spacing (not inside code blocks)
+  const tw = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const texts = [];
+  while (tw.nextNode()) texts.push(tw.currentNode);
+  texts.forEach(n => {
+    if (n.parentElement && n.parentElement.closest("pre")) return;
+    n.nodeValue = n.nodeValue.replace(/\u00a0/g, " ").replace(/[ \t]{2,}/g, " ");
+  });
+
+  fixLeftoverBold(root);
+  checkLeftovers(root);
+  return finish(root, style);
+}
+
+// ---------- Shared helpers ----------
+function toBody(html) {
+  return new DOMParser().parseFromString(html, "text/html").body;
+}
+
+// Turn leftover **text** into <strong>text</strong>.
+// Code and pre blocks are hidden first so their contents are never changed.
+// Works across tags, e.g. **Windows 10 <code>.iso</code>** becomes bold.
+function fixLeftoverBold(root) {
+  let count = 0;
+  root.querySelectorAll("p,li,h1,h2,h3,h4,h5,h6,td,th,blockquote").forEach(el => {
+    const saved = [];
+    const hidden = el.innerHTML.replace(/<(code|pre)\b[^>]*>[\s\S]*?<\/\1>/g, m => {
+      saved.push(m);
+      return "\u0001" + (saved.length - 1) + "\u0001";
+    });
+    const fixed = hidden.replace(/\*\*(?=\S)([\s\S]*?\S)\*\*/g, (m, inner) => {
+      count++;
+      return "<strong>" + inner + "</strong>";
+    });
+    if (fixed !== hidden) {
+      el.innerHTML = fixed.replace(/\u0001(\d+)\u0001/g, (m, i) => saved[+i]);
+    }
+  });
+  if (count) notes.push({ type: "ok", msg: `Turned ${count} pair(s) of ** markers into bold text.` });
+}
+
+// Warn if an unmatched ** is still visible in normal text (outside code)
+function checkLeftovers(root) {
+  let found = false;
+  root.querySelectorAll("p,li,h1,h2,h3,h4,td,th,blockquote").forEach(el => {
+    if (found) return;
+    const clone = el.cloneNode(true);
+    clone.querySelectorAll("code,pre").forEach(x => x.remove());
+    if (clone.textContent.includes("**")) found = true;
+  });
+  if (found) {
+    notes.push({ type: "warn", msg: "Some literal ** asterisks are still visible in the text. Check the Preview and fix those lines in your source." });
+  } else {
+    notes.push({ type: "ok", msg: "No stray ** asterisks found in the text." });
+  }
+}
+
+function applyStyles(root) {
+  root.querySelectorAll("*").forEach(el => {
+    const tag = el.tagName.toLowerCase();
+    let css = STYLES[tag];
+    if (tag === "code" && el.closest("pre")) css = CODE_IN_PRE;
+    if (!css) return;
+    el.setAttribute("style", css + (el.getAttribute("style") || ""));
+  });
+}
+
+function finish(root, style) {
+  // Remove <p> wrappers inside a list item (they add extra gaps)
+  root.querySelectorAll("li").forEach(li => {
+    const ps = Array.from(li.children).filter(c => c.tagName === "P");
+    if (ps.length === 1 && li.children.length === 1) ps[0].replaceWith(...ps[0].childNodes);
+  });
+
+  // Merge blockquotes that sit directly next to each other
+  let merged = 0;
+  root.querySelectorAll("blockquote").forEach(bq => {
+    while (bq.nextElementSibling && bq.nextElementSibling.tagName === "BLOCKQUOTE") {
+      const nxt = bq.nextElementSibling;
+      bq.append(...nxt.childNodes);
+      nxt.remove();
+      merged++;
+    }
+  });
+  if (merged) notes.push({ type: "ok", msg: `Merged ${merged} split quote box(es) into one.` });
+
+  // Turn blockquotes into plain divs so the theme's quote-mark decoration doesn't appear
+  root.querySelectorAll("blockquote").forEach(bq => {
+    const d = document.createElement("div");
+    d.append(...bq.childNodes);
+    d.setAttribute("style", "margin:0 0 16px;padding:0 1em;color:#59636e;border-left:.25em solid #d1d9e0;font-size:16px;line-height:1.5;");
+    bq.replaceWith(d);
+  });
+
+  // Remove empty paragraphs
+  let emptyRemoved = 0;
+  root.querySelectorAll("p").forEach(p => {
+    if (!p.textContent.replace(/\u00a0/g, "").trim() && !p.querySelector("img")) { p.remove(); emptyRemoved++; }
+  });
+  if (emptyRemoved) notes.push({ type: "ok", msg: `Removed ${emptyRemoved} empty paragraph(s).` });
+
+  if (style) applyStyles(root);
+
+  return root.innerHTML
+    .replace(/&nbsp;/g, " ")
+    .replace(/(<\/(p|h[1-6]|ul|ol|li|pre|table|blockquote|hr|div)>)/g, "$1\n")
+    .trim();
+}
+</script>
+</body>
+</html>

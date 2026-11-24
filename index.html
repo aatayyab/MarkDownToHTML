@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MarkDownToHTML — Free Markdown to WordPress.com HTML Converter</title>
+  <meta name="description" content="MarkDownToHTML is a free, private, single-file browser tool that converts Markdown into clean, inline-styled HTML for WordPress.com Custom HTML blocks and cleans messy WordPress markup." />
+  <meta property="og:title" content="MarkDownToHTML — Markdown to WordPress.com HTML Converter" />
+  <meta property="og:description" content="Turn Markdown into copy-ready WordPress HTML with built-in inline styling, code block preservation, and WordPress HTML cleanup. Free, private, in your browser." />
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
+  <style>
+    :root{
+      --ink:#111a2a; --muted:#5b6d82; --soft:#eef7ff; --soft2:#f6fbff; --line:#dbe9f7;
+      --blue:#0b66d8; --blue2:#0f8eff; --teal:#10b9a7; --dark:#061d33; --white:#fff;
+      --shadow:0 18px 45px rgba(9,34,60,.10);
+      --radius:18px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    html{scroll-behavior:smooth}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;color:var(--ink);background:#fff;line-height:1.6;overflow-x:hidden}
+    a{color:inherit;text-decoration:none}
+    .wrap{width:min(1120px,calc(100% - 44px));margin-inline:auto}
+    .topbar{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.92);backdrop-filter:blur(12px);border-bottom:1px solid rgba(219,233,247,.8)}
+    .nav{height:68px;display:flex;align-items:center;gap:24px}
+    .brand{display:flex;align-items:center;gap:10px;font-weight:900;letter-spacing:-.03em;margin-right:auto}
+    .brand img{width:40px;height:40px}.brand span{font-size:20px}.brand b{color:var(--blue)}
+    .navlinks{display:flex;align-items:center;gap:22px;font-size:13px;font-weight:800;color:#26364a}.navlinks a:hover{color:var(--blue)}
+    .pill{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:10px 18px;font-weight:900;font-size:13px;line-height:1;border:1px solid transparent;white-space:nowrap;transition:.18s ease;cursor:pointer}
+    .pill.primary{background:linear-gradient(135deg,var(--blue),var(--teal));color:#fff;box-shadow:0 12px 25px rgba(15,142,255,.22)}
+    .pill.primary:hover{transform:translateY(-1px);box-shadow:0 16px 32px rgba(15,142,255,.28)}
+    .pill.secondary{background:#fff;color:var(--ink);border-color:var(--line)}.pill.secondary:hover{border-color:var(--blue);color:var(--blue)}
+    .hero{position:relative;background:radial-gradient(circle at 80% 12%,#e8fbff 0 24%,transparent 24%),linear-gradient(135deg,#fbfdff 0%,#f3f9ff 58%,#f0fffc 100%);padding:80px 0 96px;overflow:hidden}
+    .hero:before{content:"";position:absolute;inset:auto auto -150px -120px;width:360px;height:360px;border-radius:50%;background:#e8fff9;opacity:.8}
+    .hero-grid{display:grid;grid-template-columns:1fr 470px;align-items:center;gap:70px;position:relative;z-index:1}
+    .eyebrow{font-size:12px;font-weight:900;letter-spacing:.17em;color:var(--teal);text-transform:uppercase;margin-bottom:14px}
+    h1{font-size:56px;line-height:1.06;letter-spacing:-.055em;margin-bottom:22px;max-width:650px}.grad{background:linear-gradient(135deg,var(--blue),var(--teal));-webkit-background-clip:text;background-clip:text;color:transparent}
+    .lead{font-size:18px;color:var(--muted);max-width:620px;margin-bottom:28px}.actions{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px}.chips{display:flex;gap:10px;flex-wrap:wrap}.chip{border:1px solid var(--line);background:rgba(255,255,255,.7);border-radius:999px;padding:7px 12px;font-size:12px;color:#52657b;font-weight:700}
+    .hero-card{background:#fff;border:1px solid var(--line);border-radius:28px;box-shadow:var(--shadow);padding:20px;position:relative}.hero-card:after{content:"";position:absolute;inset:-16px -16px auto auto;width:110px;height:110px;border-radius:30px;background:linear-gradient(135deg,var(--blue),var(--teal));opacity:.10;z-index:-1}
+    .app-window{background:#101d31;border-radius:20px;overflow:hidden}.window-top{height:52px;background:#172943;display:flex;align-items:center;gap:10px;padding:0 18px}.dot{width:12px;height:12px;border-radius:50%}.dot.r{background:#ff6b6b}.dot.y{background:#ffd166}.dot.g{background:#06d6a0}.window-body{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:18px}.pane{min-height:270px;border-radius:16px;padding:18px}.code{background:#202b42;color:#c9d1e0;font-family:"Cascadia Code",Consolas,monospace;font-size:13.5px}.code .blue{color:#4f8ef7}.code .green{color:#2ecc71}.preview{background:#fff;color:#253145}.preview h3{font-size:21px;margin-bottom:10px}.preview p{color:#617084;font-size:13.5px}.preview .quote-box{border-left:4px solid var(--blue);background:#f4f8fd;padding:10px 12px;border-radius:0 8px 8px 0;font-size:12.5px;color:#334459;margin:14px 0}.preview .badge-ok{display:inline-block;background:#e6f9f5;color:#0b7a6c;font-weight:800;font-size:11.5px;padding:5px 10px;border-radius:8px;margin-top:8px}
+    .strip{border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:#fff}.strip-grid{display:grid;grid-template-columns:repeat(4,1fr)}.strip-item{padding:25px 20px;border-right:1px solid var(--line)}.strip-item:last-child{border-right:none}.strip-item b{display:block;color:var(--blue);font-size:13px;margin-bottom:5px}.strip-item span{font-size:13px;color:var(--muted)}
+    section{padding:82px 0}.center{text-align:center}.section-tag{font-size:12px;font-weight:900;letter-spacing:.18em;color:var(--teal);text-transform:uppercase;margin-bottom:10px}.section-title{font-size:36px;line-height:1.15;letter-spacing:-.035em;margin-bottom:15px}.section-lead{color:var(--muted);max-width:690px;margin:0 auto 34px;font-size:16px}
+    .features{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.card{border:1px solid var(--line);background:#fff;border-radius:var(--radius);padding:28px;box-shadow:0 12px 28px rgba(9,34,60,.05);transition:.18s ease;text-align:left}.card:hover{transform:translateY(-3px);box-shadow:var(--shadow)}.icon{width:48px;height:48px;border-radius:14px;background:#eef7ff;color:var(--blue);display:grid;place-items:center;font-size:22px;font-weight:900;margin-bottom:18px}.card h3{font-size:18px;margin-bottom:8px}.card p{color:var(--muted);font-size:14px}
+    .how{background:linear-gradient(135deg,#f5fbff,#f1fffc)}.how-grid{display:grid;grid-template-columns:1fr 420px;gap:70px;align-items:center}.steps{margin-top:28px;border-top:1px solid #cddfed}.step{display:grid;grid-template-columns:44px 1fr;gap:18px;padding:22px 0;border-bottom:1px solid #cddfed}.num{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--teal));color:#fff;display:grid;place-items:center;font-weight:900}.step h3{font-size:17px;margin-bottom:4px}.step p{font-size:14px;color:var(--muted)}
+    .wp-limits-card{background:#fff;border:1px solid var(--line);border-radius:26px;padding:28px;box-shadow:var(--shadow)}.wp-limits-card h3{font-size:20px;margin-bottom:8px;color:var(--ink)}.wp-limits-card p.sub{font-size:13.5px;color:var(--muted);margin-bottom:18px}.limit-row{display:flex;align-items:flex-start;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);font-size:13.5px;color:#334459}.limit-row:last-child{border-bottom:none}.tag-no{background:#fff1f2;color:#be123c;font-weight:800;font-size:11px;padding:3px 8px;border-radius:6px;white-space:nowrap;margin-top:2px}.tag-yes{background:#e6f9f5;color:#0b7a6c;font-weight:800;font-size:11px;padding:3px 8px;border-radius:6px;white-space:nowrap;margin-top:2px}
+    .guide-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;text-align:left}.guide-card{border:1px solid var(--line);background:#fff;border-radius:16px;padding:22px}.guide-card b{display:block;margin-bottom:8px}.guide-card p{font-size:14px;color:var(--muted)}
+    .shortcuts{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:22px}.shortcut{background:var(--dark);color:#fff;border-radius:12px;padding:18px 22px;display:flex;align-items:center;gap:14px;font-weight:900}.key{background:#fff;color:#102034;border:1px solid #c5d5e6;border-bottom-width:3px;border-radius:7px;padding:5px 10px;font-family:Consolas,monospace;font-size:13px}
+    .requirements{background:#f5fbff}.req-grid{display:grid;grid-template-columns:1fr 460px;gap:70px;align-items:center}.list{list-style:none;margin:24px 0}.list li{padding:12px 0;border-bottom:1px solid #d7e6f5;color:#334459}.check{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--teal);color:#fff;font-size:13px;font-weight:900;margin-right:10px}.download-card{border-radius:24px;background:linear-gradient(135deg,var(--blue),var(--teal));color:#fff;padding:36px;box-shadow:var(--shadow)}.download-card .section-tag{color:#c9fff6}.download-card h2{font-size:32px;margin-bottom:10px}.download-card p{opacity:.92;margin-bottom:22px}.download-card .pill{background:#fff;color:var(--blue);margin-right:10px;margin-bottom:10px}
+    .contact{background:linear-gradient(135deg,#eef7ff,#f2fffc)}.contact-grid{display:grid;grid-template-columns:1fr 380px;gap:70px;align-items:center}.contact-card{background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);border-radius:18px;padding:26px}.contact-card b{display:block;margin-bottom:6px}.contact-card a{display:block;color:var(--blue);font-weight:800;font-size:14px;margin-top:8px}
+    footer{background:var(--dark);color:#c8d5e5;padding:24px 0;font-size:13px}.foot{display:flex;align-items:center;justify-content:space-between;gap:20px}.foot a{color:#fff;font-weight:800}
+    @media (max-width:900px){.nav{height:auto;padding:14px 0;align-items:flex-start}.navlinks{display:none}.hero-grid,.how-grid,.req-grid,.contact-grid{grid-template-columns:1fr}.hero{padding:54px 0}.hero-card{order:-1}h1{font-size:40px}.features,.guide-grid,.strip-grid{grid-template-columns:1fr}.strip-item{border-right:none;border-bottom:1px solid var(--line)}.shortcuts{grid-template-columns:1fr}.foot{display:block}.foot a{display:block;margin-top:12px}}
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap nav">
+      <a class="brand" href="#top" aria-label="MarkDownToHTML home"><img src="assets/icon.svg" alt=""><span>MarkDown<b>ToHTML</b></span></a>
+      <nav class="navlinks" aria-label="Main navigation">
+        <a href="#features">Features</a><a href="#how">How it works</a><a href="#usage">Usage</a><a href="#requirements">Requirements</a><a href="#contact">Contact</a>
+      </nav>
+      <a class="pill secondary" href="app.html" download="markdowntohtmlconverter.html">Download HTML</a>
+      <a class="pill primary" href="app.html">Launch Converter</a>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="wrap hero-grid">
+        <div>
+          <div class="eyebrow">Free · Private · Built for WordPress.com</div>
+          <h1>Convert Markdown into clean, copy-ready <span class="grad">WordPress HTML.</span></h1>
+          <p class="lead">Ever pasted a Markdown guide into WordPress and watched the formatting fall apart? <strong>MarkDownToHTML</strong> is a single-file browser tool that turns Markdown into inline-styled HTML ready for a WordPress.com <strong>Custom HTML</strong> block—and cleans up messy HTML copied back out of WordPress.</p>
+          <div class="actions">
+            <a class="pill primary" href="app.html">Launch Converter</a>
+            <a class="pill secondary" href="app.html" download="markdowntohtmlconverter.html">Download standalone app.html</a>
+          </div>
+          <div class="chips"><span class="chip">Inline CSS Built-In</span><span class="chip">Cleans WP Block Bloat</span><span class="chip">Preserves Code Blocks</span><span class="chip">100% Client-Side</span></div>
+        </div>
+        <div class="hero-card" aria-label="Converter preview">
+          <div class="app-window">
+            <div class="window-top"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span></div>
+            <div class="window-body">
+              <div class="pane code"><span class="blue"># WordPress Guide</span><br><br>Clean formatting with **zero** custom CSS.<br><br>&gt; Keeps blockquote styling.<br><br><span class="green">```bash</span><br>git status<br><span class="green">```</span></div>
+              <div class="pane preview"><h3>WordPress Guide</h3><p>Clean formatting with <strong>zero</strong> custom CSS.</p><div class="quote-box">Keeps blockquote styling on the free plan.</div><span class="badge-ok">✔ Copy-Ready WP HTML</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="strip">
+      <div class="wrap strip-grid">
+        <div class="strip-item"><b>Markdown → WP HTML</b><span>Generates clean, inline-styled HTML elements.</span></div>
+        <div class="strip-item"><b>WP Code Cleanup</b><span>Strips Gutenberg block comments &amp; empty tags.</span></div>
+        <div class="strip-item"><b>Code Block Protection</b><span>Keeps scripts, commands, and snippets untouched.</span></div>
+        <div class="strip-item"><b>Built-In Checks Panel</b><span>Lists automatic fixes &amp; flags free-plan limits.</span></div>
+      </div>
+    </div>
+
+    <section id="features">
+      <div class="wrap center">
+        <div class="section-tag">Key features</div>
+        <h2 class="section-title">Designed specifically around WordPress.com rules</h2>
+        <p class="section-lead">Because WordPress.com's free plan strips custom stylesheets and scripts, this converter bakes clean inline styling directly into your HTML elements so your posts look sharp out of the box.</p>
+        <div class="features">
+          <article class="card"><div class="icon">📝</div><h3>Markdown to WordPress HTML</h3><p>Paste your Markdown file and immediately get clean, semantic, copy-ready HTML formatted for a WordPress.com Custom HTML block.</p></article>
+          <article class="card"><div class="icon">🧹</div><h3>Cleans messy WordPress code</h3><p>Paste HTML copied out of WordPress to strip <code>&lt;!-- wp:... --&gt;</code> block comments, empty wrapper tags, and inline clutter.</p></article>
+          <article class="card"><div class="icon">💻</div><h3>Preserves code blocks as written</h3><p>Multi-line code fences and inline code snippets stay intact without smart-quote corruption or broken indentation.</p></article>
+          <article class="card"><div class="icon">✅</div><h3>Smart Checks panel</h3><p>Lists every automatic fix applied during conversion and warns you if your input contains tags that WordPress.com will block.</p></article>
+          <article class="card"><div class="icon">🎨</div><h3>Built-in inline styling</h3><p>Headings, tables, code blocks, and blockquotes keep their borders, padding, and contrast without needing custom site CSS.</p></article>
+          <article class="card"><div class="icon">🔒</div><h3>100% private &amp; offline-ready</h3><p>Everything runs locally inside your web browser. Your drafts are never sent to an external server or stored anywhere.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="how" id="how">
+      <div class="wrap how-grid">
+        <div>
+          <div class="section-tag">How it works</div>
+          <h2 class="section-title">From Markdown to published post in four steps</h2>
+          <p class="section-lead" style="margin-left:0;text-align:left">Run the converter online via GitHub Pages or save <code>app.html</code> to your computer to run it directly in your browser.</p>
+          <div class="steps">
+            <div class="step"><div class="num">1</div><div><h3>Open the converter</h3><p>Click <strong>Launch Converter</strong> on this site or double-click your downloaded <code>app.html</code> file.</p></div></div>
+            <div class="step"><div class="num">2</div><div><h3>Paste Markdown or WordPress HTML</h3><p>Paste your raw Markdown guide—or paste messy HTML copied out of an existing WordPress post—into the input box.</p></div></div>
+            <div class="step"><div class="num">3</div><div><h3>Convert &amp; review Checks</h3><p>Click <strong>Convert</strong>, inspect the live preview, and review the <strong>Checks</strong> panel for any free-plan warnings.</p></div></div>
+            <div class="step"><div class="num">4</div><div><h3>Paste into WordPress.com</h3><p>Click <strong>Copy HTML</strong>, add a <strong>Custom HTML</strong> block in your WordPress editor, and paste your code.</p></div></div>
+          </div>
+        </div>
+        <div class="wp-limits-card">
+          <h3>WordPress.com Free Plan Rules</h3>
+          <p class="sub">Platform rules that shape how this converter works:</p>
+          <div class="limit-row"><span class="tag-no">NO JS</span><span><strong>No JavaScript in posts:</strong> WordPress strips <code>&lt;script&gt;</code> tags, so the tool runs here or on your PC.</span></div>
+          <div class="limit-row"><span class="tag-no">NO CSS</span><span><strong>No custom stylesheets:</strong> Styling must be added inline on each element.</span></div>
+          <div class="limit-row"><span class="tag-no">NO IFRAMES</span><span><strong>No embedded apps:</strong> Tools cannot be embedded inside a post via iframe.</span></div>
+          <div class="limit-row"><span class="tag-yes">ALLOWED</span><span><strong>Custom HTML blocks:</strong> Accepts clean inline-styled HTML tags.</span></div>
+          <div class="limit-row"><span class="tag-yes">ALLOWED</span><span><strong>External links &amp; uploads:</strong> Link to GitHub Pages or host the single HTML file.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="usage">
+      <div class="wrap center">
+        <div class="section-tag">Usage guide</div>
+        <h2 class="section-title">Three ways to run the converter</h2>
+        <p class="section-lead">Because WordPress.com free plans do not execute embedded JavaScript inside posts, run the tool using whichever option fits your workflow best.</p>
+        <div class="guide-grid">
+          <div class="guide-card"><b>1. Online via GitHub Pages</b><p>Open <code>aatayyab.github.io/MarkDownToHTML/app.html</code> in any browser with zero setup or installation.</p></div>
+          <div class="guide-card"><b>2. Locally on your computer</b><p>Download <code>app.html</code> to your local drive and double-click it to open in Chrome, Edge, Firefox, or Safari.</p></div>
+          <div class="guide-card"><b>3. Self-hosted on your own site</b><p>Upload <code>app.html</code> to any basic web host or rename it to <code>index.html</code> inside any folder on your domain.</p></div>
+        </div>
+        <div class="shortcuts">
+          <div class="shortcut"><span class="key">Custom HTML</span> WordPress block to use</div>
+          <div class="shortcut"><span class="key">Ctrl</span> + <span class="key">V</span> Paste copied HTML output</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="requirements" id="requirements">
+      <div class="wrap req-grid">
+        <div>
+          <div class="section-tag">System requirements</div>
+          <h2 class="section-title">What you need</h2>
+          <ul class="list">
+            <li><span class="check">✓</span> Any modern web browser (Chrome, Edge, Firefox, Safari, or Brave)</li>
+            <li><span class="check">✓</span> Internet connection on first load so the page can load its two lightweight parsing libraries</li>
+            <li><span class="check">✓</span> A free or paid WordPress.com blog (or any self-hosted WordPress site)</li>
+            <li><span class="check">✓</span> No account, login, database, or server installation required</li>
+          </ul>
+          <a class="pill secondary" href="https://github.com/aatayyab/MarkDownToHTML" target="_blank" rel="noopener noreferrer">View GitHub Repository</a>
+        </div>
+        <div class="download-card">
+          <div class="section-tag">Ready to convert?</div>
+          <h2>Use MarkDownToHTML</h2>
+          <p>Launch the web converter immediately in your browser, or download the single-file <code>app.html</code> to keep on your desktop.</p>
+          <a class="pill" href="app.html">Launch Converter</a>
+          <a class="pill" href="app.html" download="markdowntohtmlconverter.html">Download app.html</a>
+          <a class="pill" href="https://github.com/aatayyab/MarkDownToHTML" target="_blank" rel="noopener noreferrer">GitHub Source</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="contact" id="contact">
+      <div class="wrap contact-grid">
+        <div>
+          <div class="section-tag">Contact</div>
+          <h2 class="section-title">Found a bug or have an idea?</h2>
+          <p class="lead">Reach out with suggestions, WordPress formatting edge cases, or feedback on how the converter handles your Markdown guides.</p>
+        </div>
+        <div class="contact-card">
+          <b>Amir Ali Tayyab</b>
+          <a href="mailto:aatayyab@yahoo.com">aatayyab@yahoo.com</a>
+          <a href="tel:+14074341786">+1-407-434-1786</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap foot">
+      <span>© 2026 MarkDownToHTML. Free, private Markdown to WordPress HTML conversion.</span>
+      <a href="#top">Back to top ↑</a>
+    </div>
+  </footer>
+</body>
+</html>
